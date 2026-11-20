@@ -44,6 +44,6 @@ All handled in `GlobalExceptionHandler`, returning `ErrorResponse` JSON:
 - `ddl-auto=validate` — tables come from `schema.sql`, not Hibernate.
 
 ## Commands
-- Run: `./mvnw spring-boot:run`
-- Test: `./mvnw test`
-- Compile check: `./mvnw clean compile`
+- Run: `./mvn spring-boot:run`
+- Test: `./mvn test`
+- Compile check: `./mvn clean compile`

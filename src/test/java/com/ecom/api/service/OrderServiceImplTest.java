@@ -55,6 +55,44 @@ class OrderServiceImplTest {
     // --- Business Rule 1: Stock reduces when an order is placed, not at shipment ---
 
     @Test
+    void should_throwResourceNotFoundException_when_customerNotFoundOnCreateOrder() {
+        // Arrange
+        CreateOrderRequest request = CreateOrderRequest.builder()
+                .customerId(999L)
+                .shippingAddress("123 Street")
+                .paymentMethod(PaymentMethod.CREDIT_CARD)
+                .items(List.of(OrderItemRequest.builder().productId(10L).quantity(1).build()))
+                .build();
+
+        when(customerRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> orderService.createOrder(request))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Customer not found with id: 999");
+    }
+
+    @Test
+    void should_throwResourceNotFoundException_when_productNotFoundOnCreateOrder() {
+        // Arrange
+        Customer customer = Customer.builder().id(1L).firstName("John").lastName("Doe").build();
+        CreateOrderRequest request = CreateOrderRequest.builder()
+                .customerId(1L)
+                .shippingAddress("123 Street")
+                .paymentMethod(PaymentMethod.CREDIT_CARD)
+                .items(List.of(OrderItemRequest.builder().productId(999L).quantity(1).build()))
+                .build();
+
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+        when(productRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> orderService.createOrder(request))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Product not found with id: 999");
+    }
+
+    @Test
     void should_reduceStockAndCreateOrder_when_sufficientStock() {
         // Arrange
         Customer customer = Customer.builder().id(1L).firstName("John").lastName("Doe").email("john@example.com").build();
@@ -308,5 +346,168 @@ class OrderServiceImplTest {
         assertThatThrownBy(() -> orderService.updateOrderStatus(100L, OrderStatus.SHIPPED))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("Cannot transition order status from PENDING to SHIPPED");
+    }
+
+    @Test
+    void should_throwBusinessRuleException_when_cancelOrderAlreadyDelivered() {
+        // Arrange
+        Order order = Order.builder().id(100L).status(OrderStatus.DELIVERED).build();
+        when(orderRepository.findById(100L)).thenReturn(Optional.of(order));
+
+        // Act & Assert
+        assertThatThrownBy(() -> orderService.cancelOrder(100L))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage("Cannot transition order status from DELIVERED to CANCELLED");
+    }
+
+    @Test
+    void should_throwBusinessRuleException_when_cancelOrderAlreadyCancelled() {
+        // Arrange
+        Order order = Order.builder().id(100L).status(OrderStatus.CANCELLED).build();
+        when(orderRepository.findById(100L)).thenReturn(Optional.of(order));
+
+        // Act & Assert
+        assertThatThrownBy(() -> orderService.cancelOrder(100L))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage("Cannot transition order status from CANCELLED to CANCELLED");
+    }
+
+    @Test
+    void should_throwResourceNotFoundException_when_cancelOrderNotFound() {
+        // Arrange
+        when(orderRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> orderService.cancelOrder(999L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Order not found with id: 999");
+    }
+
+    @Test
+    void should_throwResourceNotFoundException_when_updateOrderStatusOrderNotFound() {
+        // Arrange
+        when(orderRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> orderService.updateOrderStatus(999L, OrderStatus.CONFIRMED))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Order not found with id: 999");
+    }
+
+    @Test
+    void should_returnOrder_when_orderFoundById() {
+        // Arrange
+        Customer customer = Customer.builder().id(1L).firstName("John").lastName("Doe").email("john@example.com").build();
+        Order order = Order.builder()
+                .id(100L)
+                .orderNumber("ORD-12345678")
+                .customer(customer)
+                .status(OrderStatus.PENDING)
+                .totalAmount(new BigDecimal("50.00"))
+                .build();
+        when(orderRepository.findById(100L)).thenReturn(Optional.of(order));
+
+        // Act
+        OrderResponse response = orderService.getOrderById(100L);
+
+        // Assert
+        assertThat(response)
+                .isNotNull()
+                .satisfies(res -> {
+                    assertThat(res.getId()).isEqualTo(100L);
+                    assertThat(res.getOrderNumber()).isEqualTo("ORD-12345678");
+                    assertThat(res.getCustomerId()).isEqualTo(1L);
+                    assertThat(res.getStatus()).isEqualTo(OrderStatus.PENDING);
+                });
+    }
+
+    @Test
+    void should_throwResourceNotFoundException_when_orderNotFoundById() {
+        // Arrange
+        when(orderRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> orderService.getOrderById(999L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Order not found with id: 999");
+    }
+
+    @Test
+    void should_returnOrder_when_orderFoundByOrderNumber() {
+        // Arrange
+        Order order = Order.builder().id(100L).orderNumber("ORD-12345678").build();
+        when(orderRepository.findByOrderNumber("ORD-12345678")).thenReturn(Optional.of(order));
+
+        // Act
+        OrderResponse response = orderService.getOrderByOrderNumber("ORD-12345678");
+
+        // Assert
+        assertThat(response.getId()).isEqualTo(100L);
+    }
+
+    @Test
+    void should_throwResourceNotFoundException_when_orderNotFoundByOrderNumber() {
+        // Arrange
+        when(orderRepository.findByOrderNumber("NON-EXISTENT")).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> orderService.getOrderByOrderNumber("NON-EXISTENT"))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Order not found with order number: NON-EXISTENT");
+    }
+
+    @Test
+    void should_returnOrders_when_filteredByCustomerIdAndStatus() {
+        // Arrange
+        Order order = Order.builder().id(100L).status(OrderStatus.PENDING).build();
+        when(orderRepository.findByCustomerId(1L)).thenReturn(List.of(order));
+
+        // Act
+        List<OrderResponse> responses = orderService.getAllOrders(1L, OrderStatus.PENDING);
+
+        // Assert
+        assertThat(responses)
+                .hasSize(1)
+                .first()
+                .satisfies(res -> assertThat(res.getId()).isEqualTo(100L));
+    }
+
+    @Test
+    void should_returnOrders_when_filteredByCustomerIdOnly() {
+        // Arrange
+        Order order = Order.builder().id(100L).build();
+        when(orderRepository.findByCustomerId(1L)).thenReturn(List.of(order));
+
+        // Act
+        List<OrderResponse> responses = orderService.getAllOrders(1L, null);
+
+        // Assert
+        assertThat(responses).hasSize(1);
+    }
+
+    @Test
+    void should_returnOrders_when_filteredByStatusOnly() {
+        // Arrange
+        Order order = Order.builder().id(100L).status(OrderStatus.CONFIRMED).build();
+        when(orderRepository.findByStatus(OrderStatus.CONFIRMED)).thenReturn(List.of(order));
+
+        // Act
+        List<OrderResponse> responses = orderService.getAllOrders(null, OrderStatus.CONFIRMED);
+
+        // Assert
+        assertThat(responses).hasSize(1);
+    }
+
+    @Test
+    void should_returnAllOrders_when_noFiltersProvided() {
+        // Arrange
+        Order order = Order.builder().id(100L).build();
+        when(orderRepository.findAll()).thenReturn(List.of(order));
+
+        // Act
+        List<OrderResponse> responses = orderService.getAllOrders(null, null);
+
+        // Assert
+        assertThat(responses).hasSize(1);
     }
 }

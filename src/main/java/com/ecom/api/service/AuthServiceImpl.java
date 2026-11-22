@@ -44,6 +44,7 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
 
         return SignupResponse.builder()
+                .status(200)
                 .message("Registration successful")
                 .build();
     }

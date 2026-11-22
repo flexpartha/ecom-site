@@ -4,114 +4,129 @@
 
 This document provides a forensic technical assessment of the existing `ecommerce-api` backend. It identifies missing capabilities, architectural constraints, potential security risks, and integration challenges that the Angular development team and backend engineers must account for.
 
-**Crucial Note**: As instructed, no modifications have been made to the Java source code. This document serves to highlight backend gaps and define client-side workarounds until backend enhancements are prioritized.
+**Status Update (commit 374815b)**: The backend now includes **Spring Security with JWT authentication** and **CORS configuration**. These critical P0 items have been addressed. The remaining gaps below reflect the current state.
 
 ---
 
-## 2. Security & Access Control Gaps
+## 2. Security & Access Control — **MOSTLY RESOLVED**
 
-### 2.1 Complete Absence of Authentication & Authorization
-- **Defect**: The application does not include `spring-boot-starter-security`. There is no security filter chain, JWT provider, or session manager.
-- **Impact**: All 25 REST endpoints are 100% public. Anyone can invoke administrative actions such as:
-  - `DELETE /api/v1/products/{id}` (Wipes out catalog items).
-  - `PUT /api/v1/orders/{id}/status` (Arbitrarily alters order states).
-  - `GET /api/v1/customers` (Exposes customer names, emails, phones, and addresses).
-- **Customer Identity Model**:
-  - The `Customer` entity (`Customer.java`) stores names, email, phone, and address. It **has no password or hashed credentials column**.
-  - There are no endpoints for user registration with credentials, login, password reset, or token refresh.
-- **Frontend Workaround**:
-  - Implement client-side role simulation and customer context via local storage and NgRx Auth state.
-  - Require the backend team to implement Spring Security + JWT before production deployment.
+### 2.1 Authentication & JWT — ✅ IMPLEMENTED
+- **Status**: Spring Security 6.x with stateless JWT authentication is active.
+- **Endpoints**: `POST /api/v1/login`, `POST /api/v1/signup` (also `/api/v1/auth/login`, `/api/v1/auth/signup`)
+- **Token**: HS256, 24-hour expiry, configurable secret.
+- **Password Hashing**: BCrypt (cost 10).
+- **Protected Endpoints**: Orders and Payments endpoints now require valid Bearer token.
+
+### 2.2 Authorization (RBAC) — ⚠️ PARTIAL
+- **Current State**: Single role `ROLE_USER` assigned to all authenticated users.
+- **Gap**: No `ROLE_ADMIN`. Catalog write endpoints (`POST/PUT/DELETE /api/v1/categories/**`, `POST/PUT/DELETE /api/v1/products/**`) are currently under `.anyRequest().permitAll()` — they should be protected.
+- **Customer-User Link**: `Customer` entity (orders) and `User` entity (auth) are separate tables with no FK relationship.
+
+### 2.3 CORS Configuration — ✅ IMPLEMENTED
+- **Status**: `CorsConfigurationSource` bean allows `http://localhost:4200` with credentials and `Authorization` header exposure.
+- **Angular Impact**: Direct calls from dev server work; `proxy.conf.json` optional but still recommended for path rewriting.
 
 ---
 
-## 3. Performance, Scalability & Query Gaps
+## 3. Performance, Scalability & Query Gaps — **UNCHANGED**
 
 ### 3.1 Total Absence of Server-Side Pagination & Sorting
 - **Defect**: 
   - `GET /api/v1/products` calls `productRepository.findAll()`, returning a plain `List<ProductResponse>`.
   - `GET /api/v1/orders` calls `orderRepository.findAll()`, returning a plain `List<OrderResponse>`.
   - `GET /api/v1/customers` calls `customerRepository.findAll()`, returning a plain `List<CustomerResponse>`.
-- **Impact**:
-  - While performant with the current seed data (10 products, 3 customers), a production catalog with 10,000 products will exhaust server heap memory, saturate network bandwidth, and crash browser rendering engines.
-- **Frontend Workaround**:
-  - Angular must execute client-side pagination (`MatPaginator`) and client-side array slicing over the returned dataset.
-- **Backend Remedy Needed**:
-  - Refactor repositories to accept `Pageable` and return `Page<T>` with query parameters `?page=0&size=20&sort=price,desc`.
+- **Impact**: Production catalog with 10,000+ products will exhaust server heap, saturate bandwidth, and crash browser rendering.
+- **Frontend Workaround**: Angular must execute client-side pagination (`MatPaginator`) and array slicing.
+- **Backend Remedy Needed**: Refactor repositories to accept `Pageable` and return `Page<T>` with `?page=0&size=20&sort=price,desc`.
 
 ### 3.2 Missing Full-Text Search
-- **Defect**: There is no search endpoint (e.g. `GET /api/v1/products/search?q=wireless`).
-- **Frontend Workaround**:
-  - Angular must load the catalog into memory and perform client-side string filtering on `name` and `description` using RxJS operators.
+- **Defect**: No search endpoint (e.g., `GET /api/v1/products/search?q=wireless`).
+- **Frontend Workaround**: Angular loads catalog into memory and performs client-side string filtering on `name` and `description` via RxJS.
 
 ### 3.3 Restricted Filtering Capabilities
-- **Defect**: Product filtering is only supported by `categoryId` and `active`. There is no backend support for price range filtering (`minPrice`, `maxPrice`), brand/manufacturer filtering, or availability status.
-- **Frontend Workaround**:
-  - Angular selectors must execute secondary filtering in the browser.
+- **Defect**: Product filtering only supports `categoryId` and `active`. No backend support for price range (`minPrice`, `maxPrice`), brand, or availability.
+- **Frontend Workaround**: Angular selectors execute secondary filtering in the browser.
 
 ---
 
-## 4. E-Commerce Functional Gaps
+## 4. E-Commerce Functional Gaps — **UNCHANGED**
 
 ### 4.1 Missing Shopping Cart & Wishlist Persistence
-- **Defect**: The backend possesses no cart or wishlist tables, DTOs, or services.
-- **Impact**:
-  - If a customer switches devices, their cart is lost.
-  - Cart abandonment metrics and marketing recovery are impossible.
-- **Frontend Workaround**:
-  - Angular must manage cart and wishlist states exclusively in client memory (NgRx) and persist them to `localStorage`.
+- **Defect**: No cart/wishlist tables, DTOs, or services.
+- **Impact**: Cart lost on device switch; no abandonment metrics.
+- **Frontend Workaround**: NgRx + `localStorage` for client-side state.
 
 ### 4.2 Missing Product Images
-- **Defect**: The `Product` entity has no image column (no `image_url` or `gallery_urls`). There is no multipart file upload endpoint.
-- **Frontend Workaround**:
-  - Angular must generate deterministic placeholder image URLs based on product SKU:
-    `https://assets.example.com/products/${sku.toLowerCase()}.jpg`.
+- **Defect**: `Product` entity has no `image_url` or `gallery_urls`. No multipart upload endpoint.
+- **Frontend Workaround**: Deterministic SKU-based placeholder URLs: `https://assets.example.com/products/${sku.toLowerCase()}.jpg`.
 
 ### 4.3 Unstructured Shipping Address
-- **Defect**: Address in `Customer` and `Order` is stored as a single, unparsed `TEXT` column (`shippingAddress`).
-- **Impact**:
-  - Inability to perform postal code validation, tax zone resolution, or carrier rate quoting.
-- **Frontend Workaround**:
-  - The Angular checkout form should capture structured fields (Street, City, State, Zip, Country) and concatenate them into a single string before submitting to `POST /api/v1/orders`.
+- **Defect**: Address stored as single `TEXT` column (`shippingAddress`) in `Customer` and `Order`.
+- **Impact**: No postal validation, tax zone resolution, or carrier rate quoting.
+- **Frontend Workaround**: Angular checkout captures structured fields (Street, City, State, Zip, Country) and concatenates to string for `POST /api/v1/orders`.
 
 ### 4.4 Missing Payment Gateway Integration
-- **Defect**: Payment processing is simulated by updating an internal database enum (`PaymentStatus`). There are no integrations with Stripe, PayPal, Razorpay, or webhook handlers.
-- **Impact**:
-  - Anyone can send `PUT /api/v1/payments/order/{id}/status` with `{"paymentStatus": "COMPLETED"}` without submitting actual funds.
+- **Defect**: Payment is simulated via internal `PaymentStatus` enum. No Stripe, PayPal, Razorpay, or webhook handlers.
+- **Impact**: Anyone with token can `PUT /api/v1/payments/order/{id}/status` to `COMPLETED` without real funds.
 
 ### 4.5 Missing E-Commerce Modules
-The following standard e-commerce features have zero backend implementation:
-1. **Coupons / Promo Codes / Discounts**: No discount calculations exist.
-2. **Customer Reviews & Star Ratings**: No review tables or endpoints.
-3. **Shipping Tracking**: No carrier tracking number or shipping provider integration.
-4. **Order Tax Calculation**: Tax calculations are absent; orders only total line items.
+| Module | Backend Status |
+| :--- | :--- |
+| Coupons / Promo Codes | ❌ None |
+| Customer Reviews & Ratings | ❌ None |
+| Shipping Carrier Tracking | ❌ None (only `OrderStatus.SHIPPED`/`DELIVERED`) |
+| Order Tax Calculation | ❌ None (orders total line items only) |
 
 ---
 
-## 5. Error Handling & Integrity Gaps
+## 5. Error Handling & Integrity Gaps — **UNCHANGED**
 
 ### 5.1 Foreign Key Deletion Cascades
-- **Defect**: Invoking `DELETE /api/v1/categories/{id}` on a category that contains products fails with an unhandled database foreign key violation (`DataIntegrityViolationException`).
-- **Current Behavior**: The `GlobalExceptionHandler` catches this under `Exception.class` and returns a generic `500 Internal Server Error` instead of a meaningful `409 Conflict` or `422 Unprocessable Entity` ("Cannot delete category with active products").
+- **Defect**: `DELETE /api/v1/categories/{id}` on a category with products throws unhandled `DataIntegrityViolationException`.
+- **Current Behavior**: `GlobalExceptionHandler` catches under `Exception.class` → returns generic `500 Internal Server Error` instead of `409 Conflict` / `422 Unprocessable Entity`.
 
-### 5.2 Network & CORS Configuration
-- **Defect**: No `@CrossOrigin` annotations or `WebMvcConfigurer` CORS beans exist in the Java codebase.
-- **Impact**: Cross-origin requests from `http://localhost:4200` are blocked by browser security.
-- **Frontend Solution**: Must use Angular CLI `proxy.conf.json` in development.
+### 5.2 Order State Machine Enforcement
+- **Current**: Backend enforces `PENDING → CONFIRMED → PROCESSING → SHIPPED → DELIVERED` strictly. Cancellation restores stock and refunds payments.
+- **Gap**: No validation preventing admin from skipping states via direct DB access (application-level only).
 
 ---
 
-## 6. Summary Matrix of Required Backend Enhancements
+## 6. Summary Matrix of Required Backend Enhancements (Updated)
 
 | Gap Area | Current Backend State | Frontend Workaround | Priority for Backend Team |
 | :--- | :--- | :--- | :---: |
-| **Authentication** | None | Client-side customer ID selection | **CRITICAL (P0)** |
-| **Authorization (RBAC)** | None (All endpoints public) | Client-side route guards | **CRITICAL (P0)** |
-| **CORS Configuration** | Disabled / Unconfigured | Angular dev proxy (`proxy.conf.json`) | **HIGH (P1)** |
-| **Pagination & Sorting** | Unpaged `findAll()` lists | Client-side slicing & sorting | **HIGH (P1)** |
-| **Product Search** | None | Client-side RxJS text search | **MEDIUM (P2)** |
-| **Product Images** | No image fields | SKU-based external image mapper | **MEDIUM (P2)** |
-| **Cart Persistence** | None | NgRx + LocalStorage | **MEDIUM (P2)** |
-| **Payment Gateway** | Internal Enum update only | Simulated gateway form | **HIGH (P1)** |
-| **Coupons & Discounts** | None | Disabled in UI | **LOW (P3)** |
-| **Reviews & Ratings** | None | Disabled in UI | **LOW (P3)** |
+| **Authentication (JWT)** | ✅ **Implemented** | N/A | **DONE** |
+| **Authorization (RBAC)** | ⚠️ Partial — single `ROLE_USER`, catalog writes unprotected | Client-side route guards | **HIGH (P1)** |
+| **CORS Configuration** | ✅ **Implemented** | N/A (direct calls work) | **DONE** |
+| **Pagination & Sorting** | ❌ Unpaged `findAll()` | Client-side slicing & sorting | **HIGH (P1)** |
+| **Product Search** | ❌ None | Client-side RxJS text search | **MEDIUM (P2)** |
+| **Product Images** | ❌ No image fields | SKU-based external image mapper | **MEDIUM (P2)** |
+| **Cart Persistence** | ❌ None | NgRx + LocalStorage | **MEDIUM (P2)** |
+| **Payment Gateway** | ❌ Internal enum only | Simulated gateway form | **HIGH (P1)** |
+| **User-Customer Link** | ❌ Separate tables, no FK | Manual association in Angular | **MEDIUM (P2)** |
+| **Coupons & Discounts** | ❌ None | Disabled in UI | **LOW (P3)** |
+| **Reviews & Ratings** | ❌ None | Disabled in UI | **LOW (P3)** |
+| **FK Delete Handling** | ❌ 500 on violation | N/A (backend fix needed) | **HIGH (P1)** |
+
+---
+
+## 7. Angular Development Impact Summary
+
+### What Angular Can Now Do (Post-Security)
+- ✅ Real user login/registration with JWT tokens
+- ✅ Protected order placement and history
+- ✅ Secure payment status updates
+- ✅ Direct API calls from `http://localhost:4200` (CORS enabled)
+
+### What Angular Must Still Compensate For
+- 🔄 Client-side pagination, search, and filtering for catalogs
+- 🔄 Entire cart/wishlist lifecycle in NgRx + `localStorage`
+- 🔄 Structured address forms → concatenated string for backend
+- 🔄 Simulated payment flow (no real gateway)
+- 🔄 Role-based UI (admin vs customer) via client-side flags until backend adds `ROLE_ADMIN`
+
+### Recommended Next Backend Sprints
+1. **Sprint 1**: Add `ROLE_ADMIN`, protect catalog write endpoints, link `User` ↔ `Customer`
+2. **Sprint 2**: Implement `Pageable` on all list endpoints; add search endpoint
+3. **Sprint 3**: Add product image upload (S3/local), refresh token endpoint, rate limiting
+4. **Sprint 4**: Payment gateway integration (Stripe webhook), coupons, reviews

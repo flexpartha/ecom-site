@@ -515,3 +515,308 @@ export class OrderEffects {
   ) {}
 }
 ```
+
+// ============================================================================
+// 6. Authentication Feature Slice (JWT-based)
+// ============================================================================
+
+### 6.1 State Interface & Reducer (`auth.reducer.ts`)
+
+```typescript
+import { createReducer, on } from '@ngrx/store';
+import * as AuthActions from './auth.actions';
+import { UserResponse } from '../../core/models/auth.model';
+
+export interface AuthState {
+  token: string | null;
+  tokenType: string | null;
+  user: UserResponse | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+}
+
+export const initialAuthState: AuthState = {
+  token: null,
+  tokenType: null,
+  user: null,
+  isAuthenticated: false,
+  isLoading: false,
+  error: null
+};
+
+export const authReducer = createReducer(
+  initialAuthState,
+
+  // Login
+  on(AuthActions.login, (state) => ({ ...state, isLoading: true, error: null })),
+  on(AuthActions.loginSuccess, (state, { response }) => ({
+    ...state,
+    isLoading: false,
+    isAuthenticated: true,
+    token: response.token,
+    tokenType: response.tokenType,
+    user: {
+      id: 0, // Not returned by login; would need profile endpoint
+      firstName: response.firstName,
+      lastName: response.lastName,
+      username: '', // Not returned by login
+      createdAt: '',
+      updatedAt: ''
+    }
+  })),
+  on(AuthActions.loginFailure, (state, { error }) => ({ ...state, isLoading: false, error })),
+
+  // Signup
+  on(AuthActions.signup, (state) => ({ ...state, isLoading: true, error: null })),
+  on(AuthActions.signupSuccess, (state) => ({ ...state, isLoading: false })),
+  on(AuthActions.signupFailure, (state, { error }) => ({ ...state, isLoading: false, error })),
+
+  // Logout
+  on(AuthActions.logout, () => initialAuthState),
+
+  // Load persisted session from localStorage
+  on(AuthActions.loadPersistedAuth, (state, { token, user }) => ({
+    ...state,
+    token,
+    tokenType: 'Bearer',
+    user,
+    isAuthenticated: !!token
+  }))
+);
+```
+
+### 6.2 Actions (`auth.actions.ts`)
+
+```typescript
+import { createAction, props } from '@ngrx/store';
+import { LoginRequest, SignupRequest, AuthResponse, SignupResponse, UserResponse } from '../../core/models/auth.model';
+
+export const login = createAction(
+  '[Auth] Login',
+  props<{ request: LoginRequest }>()
+);
+
+export const loginSuccess = createAction(
+  '[Auth API] Login Success',
+  props<{ response: AuthResponse }>()
+);
+
+export const loginFailure = createAction(
+  '[Auth API] Login Failure',
+  props<{ error: string }>()
+);
+
+export const signup = createAction(
+  '[Auth] Signup',
+  props<{ request: SignupRequest }>()
+);
+
+export const signupSuccess = createAction(
+  '[Auth API] Signup Success',
+  props<{ response: SignupResponse }>()
+);
+
+export const signupFailure = createAction(
+  '[Auth API] Signup Failure',
+  props<{ error: string }>()
+);
+
+export const logout = createAction('[Auth] Logout');
+
+export const loadPersistedAuth = createAction(
+  '[Auth] Load Persisted Auth',
+  props<{ token: string | null; user: UserResponse | null }>()
+);
+```
+
+### 6.3 Effects (`auth.effects.ts`)
+
+```typescript
+import { Injectable } from '@angular/core';
+import { Actions, createEffect, ofType } from '@ngrx/effects';
+import { AuthService } from '../../core/services/auth.service';
+import * as AuthActions from './auth.actions';
+import { of } from 'rxjs';
+import { map, mergeMap, catchError, tap } from 'rxjs/operators';
+import { Router } from '@angular/router';
+
+@Injectable()
+export class AuthEffects {
+
+  login$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(AuthActions.login),
+      mergeMap(({ request }) =>
+        this.authService.login(request).pipe(
+          map((response) => AuthActions.loginSuccess({ response })),
+          catchError((err) => of(AuthActions.loginFailure({ error: err.error?.message || err.message })))
+        )
+      )
+    )
+  );
+
+  loginSuccess$ = createEffect(
+    () =>
+      this.actions$.pipe(
+        ofType(AuthActions.loginSuccess),
+        tap(({ response }) => {
+          // Persist token and user to localStorage
+          localStorage.setItem('ecom_access_token', response.token);
+          const user: UserResponse = {
+            id: 0,
+            firstName: response.firstName,
+            lastName: response.lastName,
+            username: '',
+            createdAt: '',
+            updatedAt: ''
+          };
+          localStorage.setItem('ecom_user_profile', JSON.stringify(user));
+        })
+      ),
+    { dispatch: false }
+  );
+
+  signup$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(AuthActions.signup),
+      mergeMap(({ request }) =>
+        this.authService.signup(request).pipe(
+          map((response) => AuthActions.signupSuccess({ response })),
+          catchError((err) => of(AuthActions.signupFailure({ error: err.error?.message || err.message })))
+        )
+      )
+    )
+  );
+
+  logout$ = createEffect(
+    () =>
+      this.actions$.pipe(
+        ofType(AuthActions.logout),
+        tap(() => {
+          localStorage.removeItem('ecom_access_token');
+          localStorage.removeItem('ecom_user_profile');
+          this.router.navigate(['/login']);
+        })
+      ),
+    { dispatch: false }
+  );
+
+  loadPersistedAuth$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(AuthActions.loadPersistedAuth),
+      // This effect is typically triggered by APP_INITIALIZER or root component
+      // No API call needed; state is restored from localStorage
+    )
+  );
+
+  constructor(
+    private actions$: Actions,
+    private authService: AuthService,
+    private router: Router
+  ) {}
+}
+```
+
+### 6.4 Selectors (`auth.selectors.ts`)
+
+```typescript
+import { createFeatureSelector, createSelector } from '@ngrx/store';
+import { AuthState } from './auth.reducer';
+
+export const selectAuthState = createFeatureSelector<AuthState>('auth');
+
+export const selectIsAuthenticated = createSelector(
+  selectAuthState,
+  (state) => state.isAuthenticated
+);
+
+export const selectAuthToken = createSelector(
+  selectAuthState,
+  (state) => state.token
+);
+
+export const selectCurrentUser = createSelector(
+  selectAuthState,
+  (state) => state.user
+);
+
+export const selectAuthLoading = createSelector(
+  selectAuthState,
+  (state) => state.isLoading
+);
+
+export const selectAuthError = createSelector(
+  selectAuthState,
+  (state) => state.error
+);
+```
+
+### 6.5 Updated Global Root State (`app.state.ts`)
+
+```typescript
+import { AuthState } from './auth/auth.reducer';
+import { CategoryState } from './categories/category.reducer';
+import { ProductState } from './products/product.reducer';
+import { CartState } from './cart/cart.reducer';
+import { WishlistState } from './wishlist/wishlist.reducer';
+import { OrderState } from './orders/order.reducer';
+
+export interface AppState {
+  auth: AuthState;
+  categories: CategoryState;
+  products: ProductState;
+  cart: CartState;
+  wishlist: WishlistState;
+  orders: OrderState;
+}
+```
+
+### 6.6 Updated Directory Structure
+
+```
+src/app/
+├── core/
+│   ├── interceptors/
+│   │   ├── auth.interceptor.ts
+│   │   └── error.interceptor.ts
+│   └── services/
+│       ├── auth.service.ts         // NEW
+│       ├── category.service.ts
+│       ├── product.service.ts
+│       ├── customer.service.ts
+│       ├── order.service.ts
+│       └── payment.service.ts
+├── store/
+│   ├── app.state.ts
+│   ├── auth/                       // NEW
+│   │   ├── auth.actions.ts
+│   │   ├── auth.reducer.ts
+│   │   ├── auth.selectors.ts
+│   │   └── auth.effects.ts
+│   ├── categories/
+│   │   ├── category.actions.ts
+│   │   ├── category.reducer.ts
+│   │   ├── category.selectors.ts
+│   │   └── category.effects.ts
+│   ├── products/
+│   │   ├── product.actions.ts
+│   │   ├── product.reducer.ts
+│   │   ├── product.selectors.ts
+│   │   └── product.effects.ts
+│   ├── cart/
+│   │   ├── cart.actions.ts
+│   │   ├── cart.reducer.ts
+│   │   ├── cart.selectors.ts
+│   │   └── cart.effects.ts
+│   ├── wishlist/
+│   │   ├── wishlist.actions.ts
+│   │   ├── wishlist.reducer.ts
+│   │   ├── wishlist.selectors.ts
+│   │   └── wishlist.effects.ts
+│   └── orders/
+│       ├── order.actions.ts
+│       ├── order.reducer.ts
+│       ├── order.selectors.ts
+│       └── order.effects.ts
+```

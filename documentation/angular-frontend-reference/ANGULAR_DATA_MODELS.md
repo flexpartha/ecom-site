@@ -142,7 +142,78 @@ export interface CustomerResponse {
 
 ---
 
-## 6. Order & Checkout Models (`order.model.ts`)
+## 6. Authentication Models (`auth.model.ts`) — NEW in commit 374815b
+
+```typescript
+/**
+ * Mirrors com.ecom.api.dto.LoginRequest
+ * POST /api/v1/login or POST /api/v1/auth/login
+ */
+export interface LoginRequest {
+  username: string;    // Required, not blank
+  password: string;    // Required, not blank
+}
+
+/**
+ * Mirrors com.ecom.api.dto.SignupRequest
+ * POST /api/v1/signup or POST /api/v1/auth/signup
+ */
+export interface SignupRequest {
+  firstName: string;   // Required, max 100 chars
+  lastName: string;    // Required, max 100 chars
+  username: string;    // Required, max 100 chars, unique
+  password: string;    // Required, min 6 chars
+}
+
+/**
+ * Mirrors com.ecom.api.dto.AuthResponse
+ * Returned by POST /api/v1/login
+ */
+export interface AuthResponse {
+  token: string;           // JWT access token
+  tokenType: string;       // "Bearer"
+  firstName: string;
+  lastName: string;
+}
+
+/**
+ * Mirrors com.ecom.api.dto.SignupResponse
+ * Returned by POST /api/v1/signup
+ */
+export interface SignupResponse {
+  status: number;          // HTTP status code (e.g., 200)
+  message: string;         // "Registration successful"
+}
+
+/**
+ * Mirrors com.ecom.api.entity.User
+ * Used for user profile display (if profile endpoint added)
+ */
+export interface UserResponse {
+  id: number;
+  firstName: string;
+  lastName: string;
+  username: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Client-side Auth State for NgRx
+ */
+export interface AuthState {
+  token: string | null;
+  tokenType: string | null;
+  user: UserResponse | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+}
+```
+
+---
+
+## 7. Order & Checkout Models (`order.model.ts`)
 
 ```typescript
 import { OrderStatus, PaymentMethod } from './enums.model';
@@ -209,7 +280,7 @@ export interface UpdateOrderStatusRequest {
 
 ---
 
-## 7. Payment Models (`payment.model.ts`)
+## 8. Payment Models (`payment.model.ts`)
 
 ```typescript
 import { PaymentMethod, PaymentStatus } from './enums.model';
@@ -236,7 +307,7 @@ export interface UpdatePaymentStatusRequest {
 
 ---
 
-## 8. Error Response Model (`error.model.ts`)
+## 9. Error Response Model (`error.model.ts`)
 
 ```typescript
 /**
@@ -254,11 +325,12 @@ export interface ApiErrorResponse {
 
 ---
 
-## 9. Client-Side Only Models (Required for Angular Frontend)
+## 10. Client-Side Only Models (Required for Angular Frontend)
 
 The backend has no database tables or DTOs for carts, wishlists, or auth tokens. Angular must declare these client-side models:
 
-### 9.1 Shopping Cart State (`cart.model.ts`)
+### 10.1 Shopping Cart State (`cart.model.ts`)
+
 ```typescript
 import { ProductResponse } from './product.model';
 
@@ -276,7 +348,8 @@ export interface CartState {
 }
 ```
 
-### 9.2 Wishlist State (`wishlist.model.ts`)
+### 10.2 Wishlist State (`wishlist.model.ts`)
+
 ```typescript
 import { ProductResponse } from './product.model';
 
@@ -285,7 +358,8 @@ export interface WishlistState {
 }
 ```
 
-### 9.3 Client-Side Filter Criteria (`filter.model.ts`)
+### 10.3 Client-Side Filter Criteria (`filter.model.ts`)
+
 ```typescript
 export interface ProductFilterCriteria {
   categoryId?: number | null;
@@ -299,7 +373,7 @@ export interface ProductFilterCriteria {
 
 ---
 
-## 10. Summary of Backend Model Availability
+## 11. Summary of Backend Model Availability
 
 | Concept | TypeScript Model Defined | Backend DTO Equivalent |
 | :--- | :---: | :---: |
@@ -310,7 +384,7 @@ export interface ProductFilterCriteria {
 | **Order Line Item** | `OrderItemRequest`, `OrderItemResponse` | `OrderItemRequest`, `OrderItemResponse` |
 | **Payment** | `PaymentResponse`, `UpdatePaymentStatusRequest` | `PaymentResponse`, `UpdatePaymentStatusRequest` |
 | **Errors** | `ApiErrorResponse` | `ErrorResponse` |
+| **Authentication** | `LoginRequest`, `SignupRequest`, `AuthResponse`, `SignupResponse`, `UserResponse` | `LoginRequest`, `SignupRequest`, `AuthResponse`, `SignupResponse`, `User` |
 | **Cart** | `CartItem`, `CartState` | **None** (Client-side only) |
 | **Wishlist** | `WishlistState` | **None** (Client-side only) |
-| **Auth / User** | *Not present in backend* | **None** (Target architecture only) |
 | **Reviews / Coupons**| *Not present in backend* | **None** (Target architecture only) |

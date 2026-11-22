@@ -59,35 +59,37 @@ For engineers, architects, and designers onboarding to the Angular implementatio
 
 ---
 
-## 4. Complete API Inventory Checklist (25 Endpoints)
+## 4. Complete API Inventory Checklist (27 Endpoints)
 
-| # | HTTP Method | Endpoint URL | Controller & Method | Implementation Status |
+| # | HTTP Method | Endpoint URL | Controller & Method | Auth Required |
 | :-: | :--- | :--- | :--- | :---: |
-| 1 | `GET` | `/api/v1/categories` | `CategoryController.getAllCategories()` | **Implemented** |
-| 2 | `GET` | `/api/v1/categories/{id}` | `CategoryController.getCategoryById(id)` | **Implemented** |
-| 3 | `GET` | `/api/v1/categories/slug/{slug}` | `CategoryController.getCategoryBySlug(slug)` | **Implemented** |
-| 4 | `POST` | `/api/v1/categories` | `CategoryController.createCategory(request)` | **Implemented** |
-| 5 | `PUT` | `/api/v1/categories/{id}` | `CategoryController.updateCategory(id, request)` | **Implemented** |
-| 6 | `DELETE` | `/api/v1/categories/{id}` | `CategoryController.deleteCategory(id)` | **Implemented** |
-| 7 | `GET` | `/api/v1/products` | `ProductController.getAllProducts(categoryId, active)` | **Implemented** |
-| 8 | `GET` | `/api/v1/products/{id}` | `ProductController.getProductById(id)` | **Implemented** |
-| 9 | `GET` | `/api/v1/products/sku/{sku}` | `ProductController.getProductBySku(sku)` | **Implemented** |
-| 10 | `POST` | `/api/v1/products` | `ProductController.createProduct(request)` | **Implemented** |
-| 11 | `PUT` | `/api/v1/products/{id}` | `ProductController.updateProduct(id, request)` | **Implemented** |
-| 12 | `DELETE` | `/api/v1/products/{id}` | `ProductController.deleteProduct(id)` | **Implemented** |
-| 13 | `GET` | `/api/v1/customers` | `CustomerController.getAllCustomers()` | **Implemented** |
-| 14 | `GET` | `/api/v1/customers/{id}` | `CustomerController.getCustomerById(id)` | **Implemented** |
-| 15 | `POST` | `/api/v1/customers` | `CustomerController.createCustomer(request)` | **Implemented** |
-| 16 | `PUT` | `/api/v1/customers/{id}` | `CustomerController.updateCustomer(id, request)` | **Implemented** |
-| 17 | `DELETE` | `/api/v1/customers/{id}` | `CustomerController.deleteCustomer(id)` | **Implemented** |
-| 18 | `POST` | `/api/v1/orders` | `OrderController.createOrder(request)` | **Implemented** |
-| 19 | `GET` | `/api/v1/orders` | `OrderController.getAllOrders(customerId, status)` | **Implemented** |
-| 20 | `GET` | `/api/v1/orders/{id}` | `OrderController.getOrderById(id)` | **Implemented** |
-| 21 | `GET` | `/api/v1/orders/number/{orderNumber}`| `OrderController.getOrderByOrderNumber(orderNumber)` | **Implemented** |
-| 22 | `PUT` | `/api/v1/orders/{id}/status` | `OrderController.updateOrderStatus(id, request)` | **Implemented** |
-| 23 | `PUT` | `/api/v1/orders/{id}/cancel` | `OrderController.cancelOrder(id)` | **Implemented** |
-| 24 | `GET` | `/api/v1/payments/order/{orderId}` | `PaymentController.getPaymentByOrderId(orderId)` | **Implemented** |
-| 25 | `PUT` | `/api/v1/payments/order/{orderId}/status` | `PaymentController.updatePaymentStatus(orderId, request)` | **Implemented** |
+| 1 | `GET` | `/api/v1/categories` | `CategoryController.getAllCategories()` | No |
+| 2 | `GET` | `/api/v1/categories/{id}` | `CategoryController.getCategoryById(id)` | No |
+| 3 | `GET` | `/api/v1/categories/slug/{slug}` | `CategoryController.getCategoryBySlug(slug)` | No |
+| 4 | `POST` | `/api/v1/categories` | `CategoryController.createCategory(request)` | **Yes** |
+| 5 | `PUT` | `/api/v1/categories/{id}` | `CategoryController.updateCategory(id, request)` | **Yes** |
+| 6 | `DELETE` | `/api/v1/categories/{id}` | `CategoryController.deleteCategory(id)` | **Yes** |
+| 7 | `GET` | `/api/v1/products` | `ProductController.getAllProducts(categoryId, active)` | No |
+| 8 | `GET` | `/api/v1/products/{id}` | `ProductController.getProductById(id)` | No |
+| 9 | `GET` | `/api/v1/products/sku/{sku}` | `ProductController.getProductBySku(sku)` | No |
+| 10 | `POST` | `/api/v1/products` | `ProductController.createProduct(request)` | **Yes** |
+| 11 | `PUT` | `/api/v1/products/{id}` | `ProductController.updateProduct(id, request)` | **Yes** |
+| 12 | `DELETE` | `/api/v1/products/{id}` | `ProductController.deleteProduct(id)` | **Yes** |
+| 13 | `GET` | `/api/v1/customers` | `CustomerController.getAllCustomers()` | No |
+| 14 | `GET` | `/api/v1/customers/{id}` | `CustomerController.getCustomerById(id)` | No |
+| 15 | `POST` | `/api/v1/customers` | `CustomerController.createCustomer(request)` | No |
+| 16 | `PUT` | `/api/v1/customers/{id}` | `CustomerController.updateCustomer(id, request)` | No |
+| 17 | `DELETE` | `/api/v1/customers/{id}` | `CustomerController.deleteCustomer(id)` | No |
+| 18 | `POST` | `/api/v1/orders` | `OrderController.createOrder(request)` | **Yes** |
+| 19 | `GET` | `/api/v1/orders` | `OrderController.getAllOrders(customerId, status)` | **Yes** |
+| 20 | `GET` | `/api/v1/orders/{id}` | `OrderController.getOrderById(id)` | **Yes** |
+| 21 | `GET` | `/api/v1/orders/number/{orderNumber}`| `OrderController.getOrderByOrderNumber(orderNumber)` | **Yes** |
+| 22 | `PUT` | `/api/v1/orders/{id}/status` | `OrderController.updateOrderStatus(id, request)` | **Yes** |
+| 23 | `PUT` | `/api/v1/orders/{id}/cancel` | `OrderController.cancelOrder(id)` | **Yes** |
+| 24 | `GET` | `/api/v1/payments/order/{orderId}` | `PaymentController.getPaymentByOrderId(orderId)` | **Yes** |
+| 25 | `PUT` | `/api/v1/payments/order/{orderId}/status` | `PaymentController.updatePaymentStatus(orderId, request)` | **Yes** |
+| 26 | `POST` | `/api/v1/login` | `AuthController.login(request)` | No |
+| 27 | `POST` | `/api/v1/signup` | `AuthController.signup(request)` | No |
 
 ---
 
@@ -96,27 +98,31 @@ For engineers, architects, and designers onboarding to the Angular implementatio
 To ensure clear engineering boundaries, functionality is segregated into three tiers:
 
 ### Tier 1: Existing & Ready Backend Functionality
-- Full CRUD on Categories (`/api/v1/categories`).
-- Full CRUD on Products (`/api/v1/products`) with SKU uniqueness and active status toggle.
+- Full CRUD on Categories (`/api/v1/categories`). **Write ops require JWT**.
+- Full CRUD on Products (`/api/v1/products`) with SKU uniqueness and active status toggle. **Write ops require JWT**.
 - Category filtering (`?categoryId=1`) and active status filtering (`?active=true`).
-- Customer directory CRUD (`/api/v1/customers`) with unique email validation.
-- Order creation (`POST /api/v1/orders`) with atomic stock reduction and invariant validation.
-- Order status state machine (`PENDING` -> `CONFIRMED` -> `PROCESSING` -> `SHIPPED` -> `DELIVERED`).
-- Order cancellation with automatic product stock restoration and payment refunding.
-- Order lookup by ID or public tracking code (`ORD-XXXXXXXX`).
-- Payment record lookup and manual status advancement (`PENDING`, `COMPLETED`, `FAILED`, `REFUNDED`).
+- Customer directory CRUD (`/api/v1/customers`) with unique email validation. **Public access**.
+- Order creation (`POST /api/v1/orders`) with atomic stock reduction and invariant validation. **Requires JWT**.
+- Order status state machine (`PENDING` -> `CONFIRMED` -> `PROCESSING` -> `SHIPPED` -> `DELIVERED`). **Requires JWT**.
+- Order cancellation with automatic product stock restoration and payment refunding. **Requires JWT**.
+- Order lookup by ID or public tracking code (`ORD-XXXXXXXX`). **Requires JWT**.
+- Payment record lookup and manual status advancement (`PENDING`, `COMPLETED`, `FAILED`, `REFUNDED`). **Requires JWT**.
+- **Authentication & Registration**: `POST /api/v1/login`, `POST /api/v1/signup` (aliases `/auth/*`). JWT Bearer tokens issued.
+- **CORS**: Configured for `http://localhost:4200` with credentials support.
 
 ### Tier 2: Partially Implemented / Client-Compensated Functionality
 - **Product Search**: Backend lacks text search; Angular executes client-side search across loaded products.
 - **Catalog Pagination**: Backend returns unpaged lists; Angular executes client-side pagination via `MatPaginator`.
-- **Customer Identity**: Backend lacks passwords; Angular manages customer identity using email lookups.
 - **Payment Processing**: Backend simulates payment states; Angular provides a simulated payment step.
+- **User Profile**: No password change, profile update, or refresh token endpoint yet.
 
 ### Tier 3: Missing Backend Functionality (Recommended Future Enhancements)
-- **Spring Security & JWT Authentication**: User accounts, password hashes, and protected routes.
+- **Role-Based Access Control (RBAC)**: Add `ROLE_ADMIN`; protect catalog write endpoints with `@PreAuthorize`.
+- **User-Customer Link**: Associate `User` (auth) with `Customer` (orders) via FK.
 - **Server-Side Shopping Cart & Wishlist**: Syncing cart items across customer sessions.
 - **Structured Address Book**: Normalized address entity with multiple shipping/billing addresses.
 - **Product Images & Media Storage**: Image URLs or Cloud storage integration (S3/Cloudinary).
 - **Coupons & Promotional Discounts**: Promo code engine.
 - **Product Reviews & Star Ratings**: Social proof and feedback mechanisms.
-- **CORS Configuration**: Native `@CrossOrigin` configuration in Spring Boot.
+- **Refresh Token Endpoint**: Secure token rotation with HttpOnly cookie storage.
+- **Rate Limiting**: On `/login`, `/signup` endpoints.

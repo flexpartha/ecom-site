@@ -13,6 +13,10 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Response returned upon user registration")
 public class SignupResponse {
 
+    @Schema(description = "HTTP status code", example = "200")
+    @Builder.Default
+    private int status = 200;
+
     @Schema(description = "Status message", example = "Registration successful")
     private String message;
 }

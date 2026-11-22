@@ -22,7 +22,7 @@ This document serves as the architectural baseline for developing an independent
 | **Validation Framework** | Jakarta Bean Validation (Hibernate Validator) | `spring-boot-starter-validation` |
 | **Boilerplate Reduction** | Project Lombok | Lombok annotations (`@Getter`, `@Setter`, `@Builder`, `@RequiredArgsConstructor`) |
 | **Build Tool** | Apache Maven (with Maven Wrapper `mvnw`) | `pom.xml`, `.mvn/wrapper/` |
-| **Security Layer** | **None** (`spring-boot-starter-security` NOT present) | Codebase inspection of `pom.xml` & config |
+| **Security Layer** | **Spring Security 6.x + JWT** (`spring-boot-starter-security`, `jjwt` 0.12.6) | `SecurityConfig.java`, `JwtService.java`, `AuthController.java` |
 | **External Payment Gateway** | **None** (Status tracked via internal DB state) | `PaymentServiceImpl.java` |
 | **Cloud File Storage** | **None** (No S3/Cloudinary/Multipart endpoints) | Codebase inspection |
 
@@ -67,6 +67,7 @@ graph TB
         CustCtrl["CustomerController\n/api/v1/customers"]
         OrdCtrl["OrderController\n/api/v1/orders"]
         PayCtrl["PaymentController\n/api/v1/payments"]
+        AuthCtrl["AuthController\n/api/v1/login, /api/v1/signup"]
         SwaggerUI["Swagger UI / OpenAPI\n/swagger-ui.html"]
     end
 
@@ -76,6 +77,7 @@ graph TB
         CustSvc["CustomerServiceImpl\n(@Transactional)"]
         OrdSvc["OrderServiceImpl\n(@Transactional)"]
         PaySvc["PaymentServiceImpl\n(@Transactional)"]
+        AuthSvc["AuthServiceImpl\n(@Transactional)"]
     end
 
     subgraph ExceptionHandling ["Global Exception Handling"]
@@ -101,6 +103,7 @@ graph TB
     AngularApp -->|HTTP REST JSON| CustCtrl
     AngularApp -->|HTTP REST JSON| OrdCtrl
     AngularApp -->|HTTP REST JSON| PayCtrl
+    AngularApp -->|HTTP REST JSON| AuthCtrl
 
     CatCtrl --> CatSvc
     ProdCtrl --> ProdSvc

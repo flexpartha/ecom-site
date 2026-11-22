@@ -77,6 +77,7 @@ class AuthControllerTest {
                 .build();
 
         SignupResponse response = SignupResponse.builder()
+                .status(200)
                 .message("Registration successful")
                 .build();
 
@@ -87,6 +88,7 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.message").value("Registration successful"));
     }
 

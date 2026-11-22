@@ -65,6 +65,7 @@ class AuthServiceImplTest {
 
         // Assert
         assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(200);
         assertThat(response.getMessage()).isEqualTo("Registration successful");
         verify(userRepository).save(any(User.class));
     }

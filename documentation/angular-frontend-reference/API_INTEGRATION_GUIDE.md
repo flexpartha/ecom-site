@@ -14,10 +14,20 @@
 ## 2. Critical Network & CORS Setup
 
 ### 2.1 The CORS Reality & Solution
-The current Spring Boot application **does not configure `@CrossOrigin` or a global `CorsRegistry`**. 
-If your Angular app makes direct browser `fetch` or `HttpClient` requests from `http://localhost:4200` to `http://localhost:8080`, the browser will block them due to Same-Origin Policy (CORS).
+The Spring Boot application **does configure a global `CorsConfigurationSource`**:
+- **Allowed Origins**: `http://localhost:4200`
+- **Allowed Methods**: `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`, `PATCH`
+- **Allowed Headers**: `*`
+- **Exposed Headers**: `Authorization`
+- **Allow Credentials**: `true`
+- **Max Age**: 3600 seconds
 
-### 2.2 Angular Development Proxy (`proxy.conf.json`)
+This means direct browser requests from `http://localhost:4200` to `http://localhost:8080` are permitted and authenticated.
+
+### 2.2 Angular Development Proxy (`proxy.conf.json`) (Optional)
+For path restructuring or additional dev-server control, you may still configure the Angular CLI proxy:
+> **Note**: This is no longer strictly required for CORS, but is useful for proxies or rewrites.
+
 To bypass CORS in local development without altering the Java codebase, configure the Angular CLI proxy:
 
 Create `proxy.conf.json` in the root of your Angular project:
@@ -298,6 +308,32 @@ export class PaymentService {
   updatePaymentStatus(orderId: number, paymentStatus: PaymentStatus): Observable<PaymentResponse> {
     const payload: UpdatePaymentStatusRequest = { paymentStatus };
     return this.http.put<PaymentResponse>(`${this.baseUrl}/order/${orderId}/status`, payload);
+  }
+}
+```
+
+### 6.4 `AuthService` (`auth.service.ts`) — NEW
+
+```typescript
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { LoginRequest, SignupRequest, AuthResponse, SignupResponse } from '../models/auth.model';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private readonly baseUrl = '/api/v1';
+
+  constructor(private http: HttpClient) {}
+
+  login(request: LoginRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.baseUrl}/login`, request);
+  }
+
+  signup(request: SignupRequest): Observable<SignupResponse> {
+    return this.http.post<SignupResponse>(`${this.baseUrl}/signup`, request);
   }
 }
 ```

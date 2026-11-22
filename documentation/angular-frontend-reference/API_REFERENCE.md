@@ -7,7 +7,9 @@ All endpoints adhere to the following standards:
 - **Protocol**: HTTP/1.1 or HTTP/2 over HTTPS
 - **Content-Type**: `application/json`
 - **Accept**: `application/json`
-- **Authentication**: **None** (Endpoints are open; no `Authorization` header required)
+- **Authentication**: **JWT Bearer Token** (Required for protected endpoints — see Auth section). Public endpoints allow anonymous access.
+- **Authorization Header**: `Authorization: Bearer <access_token>`
+- **CORS**: Enabled for `http://localhost:4200` with credentials
 - **Error Response Envelope**: All exceptions return standard JSON:
   ```json
   {
@@ -21,6 +23,13 @@ All endpoints adhere to the following standards:
     }
   }
   ```
+
+### 1.1 Protected vs Public Endpoints
+
+| Access Level | Endpoints |
+| :--- | :--- |
+| **Public (Anonymous)** | `GET /api/v1/categories/**`, `GET /api/v1/products/**`, `GET/POST/PUT/DELETE /api/v1/customers/**`, `POST /api/v1/login`, `POST /api/v1/signup`, `POST /api/v1/auth/login`, `POST /api/v1/auth/signup` |
+| **Authenticated (JWT Required)** | `POST /api/v1/orders`, `GET /api/v1/orders/**`, `PUT /api/v1/orders/**`, `GET/PUT /api/v1/payments/**`, `POST/PUT/DELETE /api/v1/categories/**` (write), `POST/PUT/DELETE /api/v1/products/**` (write) |
 
 ---
 
@@ -60,13 +69,13 @@ All endpoints adhere to the following standards:
 
 | Module Name | Status in Backend | Notes / Angular Action Required |
 | :--- | :---: | :--- |
-| **Product Categories** | **IMPLEMENTED** | Full CRUD, slug & ID queries |
-| **Product Management & Catalog** | **IMPLEMENTED** | Full CRUD, SKU & ID queries, basic filtering |
-| **Customer Directory** | **IMPLEMENTED** | Full CRUD, email uniqueness |
-| **Orders & Checkout Placement** | **IMPLEMENTED** | Creation, status transitions, stock reduction, cancellation |
-| **Payment Tracking** | **IMPLEMENTED** | Read & update status per order |
-| **Authentication & Registration** | **MISSING** | No login, token, or password storage. Angular must use Customer record |
-| **User Profile & Password** | **MISSING** | No user account settings or password update endpoints |
+| **Product Categories** | **IMPLEMENTED** | Full CRUD, slug & ID queries. Write ops require JWT. |
+| **Product Management & Catalog** | **IMPLEMENTED** | Full CRUD, SKU & ID queries, basic filtering. Write ops require JWT. |
+| **Customer Directory** | **IMPLEMENTED** | Full CRUD, email uniqueness. Public access. |
+| **Orders & Checkout Placement** | **IMPLEMENTED** | Creation, status transitions, stock reduction, cancellation. **Requires JWT**. |
+| **Payment Tracking** | **IMPLEMENTED** | Read & update status per order. **Requires JWT**. |
+| **Authentication & Registration** | **IMPLEMENTED** | `POST /api/v1/login`, `POST /api/v1/signup` (aliases `/auth/login`, `/auth/signup`). JWT Bearer tokens. |
+| **User Profile & Password** | **PARTIAL** | Login/signup implemented. No profile update, password change, or refresh token endpoint yet. |
 | **Shopping Cart** | **MISSING** | Must be implemented 100% in Angular client (LocalStorage / NgRx) |
 | **Wishlist** | **MISSING** | Must be client-side state in Angular |
 | **Address Management** | **MISSING** | No dedicated address book; raw string stored in Customer / Order |
@@ -720,3 +729,69 @@ All endpoints adhere to the following standards:
 - **Error Responses**:
   - `400 Bad Request`: Missing or invalid `paymentStatus`.
   - `404 Not Found`: No payment record found for order.
+
+---
+
+## 9. Module: Authentication & User Management
+
+### 9.1 User Login
+- **Description**: Authenticates user credentials and returns a JWT access token.
+- **HTTP Method**: `POST`
+- **Endpoint**: `/api/v1/login` (also `/api/v1/auth/login`)
+- **Controller Method**: `AuthController.login(@Valid @RequestBody LoginRequest request)`
+- **Auth / Role**: Public (Anonymous)
+- **Request Body**:
+  ```json
+  {
+    "username": "partha.chakra2",
+    "password": "admin123"
+  }
+  ```
+- **Validation Rules**:
+  - `username`: `@NotBlank`
+  - `password`: `@NotBlank`
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "token": "eyJhbGciOiJIUzI1NiJ9...",
+    "tokenType": "Bearer",
+    "firstName": "Partha",
+    "lastName": "Chakraborty"
+  }
+  ```
+- **Error Responses**:
+  - `400 Bad Request`: Missing username or password
+  - `401 Unauthorized`: Invalid credentials
+
+---
+
+### 9.2 User Registration (Signup)
+- **Description**: Registers a new user account with hashed password.
+- **HTTP Method**: `POST`
+- **Endpoint**: `/api/v1/signup` (also `/api/v1/auth/signup`)
+- **Controller Method**: `AuthController.signup(@Valid @RequestBody SignupRequest request)`
+- **Auth / Role**: Public (Anonymous)
+- **Request Body**:
+  ```json
+  {
+    "firstName": "Partha",
+    "lastName": "Chakraborty",
+    "username": "partha.chakra2",
+    "password": "admin123"
+  }
+  ```
+- **Validation Rules**:
+  - `firstName`: `@NotBlank`, max 100 chars
+  - `lastName`: `@NotBlank`, max 100 chars
+  - `username`: `@NotBlank`, max 100 chars, unique
+  - `password`: `@NotBlank`, min 6 chars
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "status": 200,
+    "message": "Registration successful"
+  }
+  ```
+- **Error Responses**:
+  - `400 Bad Request`: Validation failures
+  - `409 Conflict`: Username already exists

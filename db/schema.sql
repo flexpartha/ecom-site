@@ -87,6 +87,19 @@ CREATE TABLE payments (
     CONSTRAINT fk_payments_order FOREIGN KEY (order_id) REFERENCES orders (id)
 );
 
+-- users
+CREATE TABLE users (
+    id         BIGINT        NOT NULL AUTO_INCREMENT,
+    first_name VARCHAR(100)  NOT NULL,
+    last_name  VARCHAR(100)  NOT NULL,
+    username   VARCHAR(100)  NOT NULL,
+    password   VARCHAR(255)  NOT NULL,
+    created_at DATETIME,
+    updated_at DATETIME,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_users_username (username)
+);
+
 -- indexes
 CREATE INDEX idx_products_category   ON products    (category_id);
 CREATE INDEX idx_products_active     ON products    (active);
@@ -128,6 +141,10 @@ INSERT INTO customers (first_name, last_name, email, phone, address, created_at)
 ('Jane',  'Smith', 'jane.smith@example.com', '+1-202-555-0142', '88 Oak Avenue, Riverdale',       NOW()),
 ('Ravi',  'Kumar', 'ravi.kumar@example.com', '+91-90000-12345', '12 MG Road, Bengaluru',          NOW());
 
+-- users (password is BCrypt hash of 'admin123')
+INSERT INTO users (first_name, last_name, password, username, created_at, updated_at) VALUES
+('Partha', 'Chakraborty', '$2a$10$OS7A/hV2C4eMRBTfs1n3t.gkeKJt1vPROkiY1WsfhyZibj/VUmaqu', 'partha.chakra2', NOW(), NOW());
+
 -- ---------------------------------------------------------------------------
 -- Verification (run after the script to confirm the seed loaded)
 -- ---------------------------------------------------------------------------
@@ -137,3 +154,4 @@ SELECT * FROM customers;
 SELECT * FROM orders;
 SELECT * FROM order_items;
 SELECT * FROM payments;
+SELECT * FROM users;
